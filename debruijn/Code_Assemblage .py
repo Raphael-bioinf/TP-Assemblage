@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[53]:
+# In[85]:
 
 
 import networkx as nx
@@ -23,7 +23,7 @@ def cut_kmer(seq : str,k : int):
 if __name__=="__main__" :
     for i in read_fastq("data\eva71_plus_perfect.fq"):
         print(i)
-        for j in cut_kmer(i,k=3):
+        for j in cut_kmer(i,k=21):
             print(j,end='')
         break
         
@@ -42,18 +42,18 @@ def build_kmer_dict(fichier_fastq, taille_kmer):
             else:
                 occurrence_kmers[kmer] = 1
     return occurrence_kmers
-    
+
 
 def build_graph(dico_kmers):
     """Cette fonction va permettre de créer un digraph qui permettra,
     à terme, d'aligner les reads.
     """
+    dico_kmers = build_kmer_dict(read_fastq("data\eva71_plus_perfect.fq"), 21)
     graph = nx.DiGraph()
     for kmer, poids in dico_kmers.items():
         graph.add_edge(kmer[:-1], kmer[1:], weight=poids)
-    return graph
-    
-    
+        return graph
+build_kmer_dict(read_fastq("data\eva71_plus_perfect.fq"), 21)    
 
 
 # In[ ]:
