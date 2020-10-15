@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[85]:
+# In[150]:
 
 
 import networkx as nx
 import pytest as pt
 import pylint as pl
+import matplotlib as plt
+import scipy
 
 def read_fastq(fichier : str):
     with open(fichier) as filin:
@@ -44,16 +46,25 @@ def build_kmer_dict(fichier_fastq, taille_kmer):
     return occurrence_kmers
 
 
-def build_graph(dico_kmers):
+
+def build_graph(occurrence_kmers):
     """Cette fonction va permettre de créer un digraph qui permettra,
     à terme, d'aligner les reads.
     """
-    dico_kmers = build_kmer_dict(read_fastq("data\eva71_plus_perfect.fq"), 21)
     graph = nx.DiGraph()
     for kmer, poids in dico_kmers.items():
         graph.add_edge(kmer[:-1], kmer[1:], weight=poids)
-        return graph
-build_kmer_dict(read_fastq("data\eva71_plus_perfect.fq"), 21)    
+    #nx.draw(graph)
+    return graph
+
+#build_kmer_dict(read_fastq("data\eva71_plus_perfect.fq"), 21)
+#build_graph(build_kmer_dict(read_fastq("data\eva71_plus_perfect.fq"), 21))
+
+
+# In[151]:
+
+
+build_graph(build_kmer_dict(read_fastq("data\eva71_plus_perfect.fq"), 21))
 
 
 # In[ ]:
