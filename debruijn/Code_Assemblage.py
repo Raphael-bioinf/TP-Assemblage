@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[185]:
+# In[33]:
 
 
 import networkx as nx
@@ -9,13 +9,18 @@ import pytest as pt
 import pylint as pl
 import matplotlib as plt
 import scipy
-taille_kmer =3
+import os
+
+taille_kmer =21
+
 def read_fastq(fichier : str):
     with open(fichier) as filin:
         for line in enumerate(filin):
             yield next(filin)[:-1]
             next(filin)
             next(filin)
+            
+
 
 def cut_kmer(seq : str,k : int):
     #Cette fonction va permettre d'obtenir des k-mers de taille désirée à partir d'un read renseigné.
@@ -29,7 +34,7 @@ if __name__=="__main__" :
             print(j,end='')
         break
         
-def build_kmer_dict(fichier_fastq, jk):
+def build_kmer_dict(fichier_fastq,taille_kmer):
     """Cette fonction va permettre de calculer les occurrences de
     chaque Kmers contenus au sein des reads issus du fastq.
     """
@@ -52,13 +57,13 @@ def build_graph(occurrence_kmers):
     à terme, d'aligner les reads.
     """
     graph = nx.DiGraph()
-    for kmer, poids in dico_kmers.items():
+    for kmer, poids in occurrence_kmers.items():
         graph.add_edge(kmer[:-1], kmer[1:], weight=poids)
-    #nx.draw(graph)
+    nx.draw(graph)
     return graph
 
-build_kmer_dict(read_fastq("data\eva71_two_reads.fq."), 3)
-build_graph(build_kmer_dict(read_fastq("data\eva71_two_reads.fq."), 3))
+#build_kmer_dict(read_fastq("data\eva71_two_reads.fq."), taille_kmer)
+#graph=build_graph(build_kmer_dict(read_fastq("data\eva71_two_reads.fq."), taille_kmer))
 
 def get_starting_nodes(graph):
     """Fonction qui permet de relever les noeuds d'entrée."""
@@ -68,6 +73,8 @@ def get_starting_nodes(graph):
             noeuds_entree.append(noeud)
     return noeuds_entree
 
+noeuds_entree = get_starting_nodes(graph)
+                                   
 def get_sink_nodes(graph):
     """Fonction qui permet de relever les noeuds de sortie."""
     noeuds_sortie = []
@@ -75,7 +82,9 @@ def get_sink_nodes(graph):
         if len(list(graph.successors(noeud))) == 0:
             noeuds_sortie.append(noeud)
     return noeuds_sortie
-
+                                   
+noeuds_sortie = get_sink_nodes(graph)
+                                   
 def get_contigs(graph, noeuds_entree, noeuds_sortie):
     """Fonction permettant de générer une liste de tulpes
     contenant les contigs associés à leur taille.
@@ -91,8 +100,25 @@ def get_contigs(graph, noeuds_entree, noeuds_sortie):
                 contigs.append((contig_ecrit, len(contig_ecrit)))
     return contigs
 
-get_contigs(graph, get_starting_nodes(graph), get_sink_nodes(graph))
 
+get_contigs(graph,noeuds_entree,noeuds_sortie)
+
+def fill(text, width=80):
+    """Split text with a line return to respect fasta format"""
+    return os.linesep.join(text[i:i+width] for i in range(0, len(text), width))
+
+def save_contigs(liste_contigs, nom_fichier):
+    """Cette fonction permet d'exporter les contigs dans un fichier
+    au format FASTA
+    """
+    with open(nom_fichier, "w") as fichier_sortie:
+        numero = 0
+        for contigs in liste_contigs:
+            fichier_sortie.write(">contig_{0} len={1}\n".format(numero, contigs[1]))
+            fichier_sortie.write("{0}\n".format(fill(contigs[0])))
+            numero += 1
+
+save_contigs(get_contigs(graph,noeuds_entree,noeuds_sortie),"Export_contigs.fna")
 
 
 # In[ ]:
