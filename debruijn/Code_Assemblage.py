@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[8]:
+# In[18]:
 
 
 import networkx as nx
@@ -10,7 +10,7 @@ import scipy
 import os
 import statistics
 import argparse
-taille_k=21
+#taille_k=21
 
 def read_fastq(fichier_fastq):
     with open(fichier_fastq,"r") as fastq:
@@ -60,7 +60,7 @@ def build_graph(dict_kmers):
     return graph
 
 #build_kmer_dict(read_fastq("data\eva71_two_reads.fq."), taille_kmer)
-graph=build_graph(build_kmer_dict(read_fastq("data\eva71_plus_perfect.fq."), taille_k))
+#graph=build_graph(build_kmer_dict(read_fastq("data\eva71_plus_perfect.fq."), taille_k))
 
 def get_starting_nodes(graph):
     """Fonction permettant de définir les noeuds d'entrée."""
@@ -274,36 +274,114 @@ def simplify_bubbles(graph):
 
 
 
-def solve_entry_tips():
-    pass
-def solve_out_tips():
-    pass
+def solve_entry_tips(graph, entrees):
+    """Fonction qui permet d'enlever les entrées indésirables."""
+    print(entrees)
+    bornes_initiales = []
+    #On cherche les noeuds avec des intersections en partant du début
+    for noeuds_entree in entrees:
+        ensemble_noeuds = list(graph.nodes)
+        fin = ""
+        for i in range(len(ensemble_noeuds)):
+            if len(list(graph.predecessors(ensemble_noeuds[i]))) > 1:
+                fin = ensemble_noeuds[i]
+        if fin != "":
+            bornes_initiales.append([noeuds_entree, fin])
+    print(bornes_initiales)
+    #Définitions des chemins et valeurs associées
+    ensemble_chemins = []
+    poids_moyen = []
+    ensemble_longueurs = []
+    for borne in bornes_initiales:
+        for path in nx.all_simple_paths(graph,                source=borne[0], target=borne[1]):
+            ensemble_chemins.append(path)
+            poids_moyen.append(path_average_weight(graph, path))
+            ensemble_longueurs.append(len(path))
+    #Nettoyage du graph
+    graph = select_best_path(graph, ensemble_chemins,    ensemble_longueurs, poids_moyen, delete_entry_node=True,    delete_sink_node=False)
+    return graph
+
+def solve_out_tips(graph, sorties):
+    """Fonction qui permet d'enlever les entrées indésirables"""
+    #établissement des bornes de chemins de sortie.
+    bornes_initiales = []
+    for noeuds_sortie in sorties:
+        ensemble_noeuds = list(graph.nodes)
+        debut = ""
+        for i in range(len(ensemble_noeuds)):
+            if len(list(graph.successors(ensemble_noeuds[i]))) > 1:
+                debut = ensemble_noeuds[i]
+        if debut != "":
+            bornes_initiales.append([debut, noeuds_sortie])
+    #Définitions des chemins et valeurs associées
+    ensemble_chemins = []
+    poids_moyen = []
+    ensemble_longueurs = []
+    for borne in bornes_initiales:
+        for path in nx.all_simple_paths(graph,                source=borne[0], target=borne[1]):
+            ensemble_chemins.append(path)
+            poids_moyen.append(path_average_weight(graph, path))
+            ensemble_longueurs.append(len(path))
+    #Nettoyage du graph
+    graph = select_best_path(graph, ensemble_chemins,    ensemble_longueurs, poids_moyen, delete_entry_node=False,    delete_sink_node=True)
+    return graph
+
+def main() :    
+    fichier_fastq = read_fastq("data\eva71_plus_perfect.fq.")
+    taille_k=21
+
+
+    liste_reads = []
+    for sequence in fichier_fastq:
+        liste_reads.append(sequence)
+    #print (liste_reads)
+
+    liste_kmers = []
+    for read in liste_reads:
+        for kmers in cut_kmer(read, taille_k):
+            liste_kmers.append(kmers)
+    #print(liste_kmers)
+    occurrence_kmers = build_kmer_dict(fichier_fastq, taille_k)
+    #print(occurrence_kmers)
+
+
+
+    debuts = get_starting_nodes(graph)
+    fins = get_sink_nodes(graph)
+    liste_contigs = get_contigs(graph, debuts, fins)
+
+    graph = simplify_bubbles(graph)
+    noeuds_entree = get_starting_nodes(graph)
+    while len(noeuds_entree) > 1:
+        graph = solve_entry_tips(graph, noeuds_entree)
+        noeuds_entree = get_starting_nodes(graph)
+    noeuds_entree = get_starting_nodes(graph)
+
+    noeuds_terminaux = get_sink_nodes(graph)
+    while len(noeuds_terminaux) > 1:
+        graph = solve_out_tips(graph, noeuds_terminaux)
+        noeuds_terminaux = get_sink_nodes(graph)
+    noeuds_terminaux = get_sink_nodes(graph)
+
+    graph = simplify_bubbles(graph)
+
+    final_contig = get_contigs(graph, noeuds_entree, noeuds_terminaux)
+    print("\n\n\nOn obtient {} noeuds d'entrée.".format(len(noeuds_entree)))
+    print("On obtient {} noeuds de sortie.".format(len(noeuds_terminaux)))
+    print("Ce qui nous donne {} contigs généré(s).".format(len(final_contig))) 
+
+    print(final_contig)
+    nx.draw(graph)
+    save_contigs(final_contig, "Final.fna")
     
-fichier_fastq = read_fastq("data\eva71_plus_perfect.fq.")
-taille_k=21
-   
+if __name__ == "__main__":
+    main()
 
-liste_reads = []
-for sequence in fichier_fastq:
-    liste_reads.append(sequence)
-#print (liste_reads)
 
-liste_kmers = []
-for read in liste_reads:
-    for kmers in cut_kmer(read, taille_k):
-        liste_kmers.append(kmers)
-#print(liste_kmers)
-occurrence_kmers = build_kmer_dict(fichier_fastq, taille_k)
-#print(occurrence_kmers)
+# In[ ]:
 
 
 
-debuts = get_starting_nodes(graph)
-fins = get_sink_nodes(graph)
-liste_contigs = get_contigs(graph, debuts, fins)
-
-graph = simplify_bubbles(graph)
-nx.draw(graph) 
 
 
 # In[ ]:
