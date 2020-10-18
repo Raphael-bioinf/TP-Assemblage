@@ -1,20 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[13]:
+# In[1]:
 
 
 import networkx as nx
-import pytest as pt
-import pylint as pl
 import matplotlib as plt
 import scipy
 import os
 import statistics
 import argparse
-
-
-
+taille_k=21
 
 def read_fastq(fichier_fastq):
     with open(fichier_fastq,"r") as fastq:
@@ -26,7 +22,7 @@ def read_fastq(fichier_fastq):
 
 
 def cut_kmer(seq, taille_k):
-    #Cette fonction va permettre d'obtenir des k-mers de taille désirée à partir d'un read renseigné.
+    #On génère des k-mers de taille désirée à partir d'un read .
     for i in range(len(seq)-taille_k+1):
         yield seq[i:i+taille_k]
         
@@ -38,8 +34,7 @@ if __name__=="__main__" :
         break
         
 def build_kmer_dict(fichier_fastq,taille_k):
-    """Cette fonction va permettre de calculer les occurrences de
-    chaque Kmers contenus au sein des reads issus du fastq.
+    """Calcule des occurrences des Kmers dans les reads issus du fastq.
     """
     liste_reads = []
     for sequence in fichier_fastq:
@@ -56,8 +51,7 @@ def build_kmer_dict(fichier_fastq,taille_k):
 
 
 def build_graph(dict_kmers):
-    """Cette fonction va permettre de créer un digraph qui permettra,
-    à terme, d'aligner les reads.
+    """On créé un premier digraph en prenant en compte tout les kmers générés.
     """
     graph = nx.DiGraph()
     for kmer, poids in dict_kmers.items():
@@ -66,10 +60,10 @@ def build_graph(dict_kmers):
     return graph
 
 #build_kmer_dict(read_fastq("data\eva71_two_reads.fq."), taille_kmer)
-#graph=build_graph(build_kmer_dict(read_fastq("data\eva71_two_reads.fq."), taille_kmer))
+graph=build_graph(build_kmer_dict(read_fastq("data\eva71_two_reads.fq."), taille_k))
 
 def get_starting_nodes(graph):
-    """Fonction qui permet de relever les noeuds d'entrée."""
+    """Fonction permettant de définir les noeuds d'entrée."""
     noeuds_entree = []
     for noeud in graph.nodes:
         if len(list(graph.predecessors(noeud))) == 0:
@@ -79,7 +73,7 @@ def get_starting_nodes(graph):
 #noeuds_entree = get_starting_nodes(graph)
                                    
 def get_sink_nodes(graph):
-    """Fonction qui permet de relever les noeuds de sortie."""
+    """Fonction permettant de définir les noeuds de sortie."""
     noeuds_sortie = []
     for noeud in graph.nodes:
         if len(list(graph.successors(noeud))) == 0:
@@ -89,8 +83,7 @@ def get_sink_nodes(graph):
 #noeuds_sortie = get_sink_nodes(graph)
                                    
 def get_contigs(graph, start, end):
-    """Fonction permettant de générer une liste de tulpes
-    contenant les contigs associés à leur taille.
+    """Fonction permettant de générer une liste de tuples contenant les contigs avec leur taille.
     """
     contigs = []
     for noeud_depart in start:
@@ -104,15 +97,12 @@ def get_contigs(graph, start, end):
     return contigs
 
 
-#get_contigs(graph,noeuds_entree,noeuds_sortie)
-
 def fill(text, width=80):
     """Split text with a line return to respect fasta format"""
     return os.linesep.join(text[i:i+width] for i in range(0, len(text), width))
 
 def save_contigs(liste_contigs, nom_fichier):
-    """Cette fonction permet d'exporter les contigs dans un fichier
-    au format FASTA
+    """Cette fonction permet de sauvegarder les contigs dans un fichier FASTA
     """
     with open(nom_fichier, "w") as fichier_sortie:
         numero = 0
@@ -121,7 +111,7 @@ def save_contigs(liste_contigs, nom_fichier):
             fichier_sortie.write("{0}\n".format(fill(contigs[0])))
             numero += 1
 
-#save_contigs(get_contigs(graph,noeuds_entree,noeuds_sortie),"Contigs.fna")
+    save_contigs(get_contigs(graph,noeuds_entree,noeuds_sortie),"Contigs.fna")
 
 def std(liste_valeurs):
     """Calcul l'écart-type de la liste de valeurs"""
@@ -129,8 +119,7 @@ def std(liste_valeurs):
 
 
 def path_average_weight(graph, chemin):
-    """Cette fonction permet de retourner le poids moyen d'un
-    chemin.
+    """Cette fonction retourne le poids moyen d'un chemin
     """
     poids = 0
     nbre_edges = 0
@@ -142,9 +131,150 @@ def path_average_weight(graph, chemin):
     poids = poids/nbre_edges
     return poids
 
+def remove_paths(graph, liste_chemins, delete_entry_node=False, delete_sink_node=False):
+    """Fonction permettant de verifier si on enlève ou non les noeuds de départe et de fin pour chaque chemin
+    Et retourne un graph nettoyé des chemins indésirables
+    """
+    for chemin in liste_chemins:
+        if delete_entry_node == False and delete_sink_node == False:
+            for noeud in chemin[1:-1]:
+                if noeud in graph.nodes:
+                    graph.remove_node(noeud)
+        elif delete_entry_node and delete_sink_node == False:
+            for noeud in chemin[:-1]:
+                if noeud in graph.nodes:
+                    graph.remove_node(noeud)
+        elif delete_entry_node == False and delete_sink_node:
+            for noeud in chemin[1:]:
+                if noeud in graph.nodes:
+                    graph.remove_node(noeud)
+        elif delete_entry_node and delete_sink_node:
+            for noeud in chemin[:]:
+                if noeud in graph.nodes:
+                    graph.remove_node(noeud)
+    return graph
+
+def select_best_path(graph, ensemble_chemins, ensemble_longueurs,poids_moyen, delete_entry_node=False, delete_sink_node=False):
+    """Fonction qui va permettre d'identifier le meilleur chemin selon 3 critères :
+    - poids le plus élevé
+    - les chemins les plus long
+    - on tire une au hasard
+    Les chemins non conservés sont envoyés à la fonction remove_paths.
+    """
+    a_retirer = []
+    taille_max = max(poids_moyen)
+    chemin_fort_poids = []
+    #On recherche les chemins qui ont un poids correspondant
+    #au poids maximum (de préférence un seul ...)
+    for i in range(len(ensemble_chemins)):
+        if poids_moyen[i] == taille_max:
+            chemin_fort_poids.append(ensemble_chemins[i])
+    #On récupère les chemins à conserver puis on ajoute
+    #les autres à la liste "a_retirer"
+    for chemin in chemin_fort_poids:
+        ensemble_chemins.remove(chemin)
+    a_retirer = ensemble_chemins + a_retirer
+    #S'il y a plus qu'un chemin qui a le poids maximum on regarde
+    #la taille de ceux le poids maximum.
+    if len(chemin_fort_poids) > 1:
+        longueur_max = max(ensemble_longueurs)
+        grands_chemins = []
+        for i in range(len(chemin_fort_poids)):
+            if ensemble_longueurs[i] == longueur_max:
+                grands_chemins.append(chemin_fort_poids[i])
+        #On récupère les chemins à conserver puis on ajoute
+        #les autres à la liste "a_retirer"
+        for chemin in grands_chemins:
+            chemin_fort_poids.remove(chemin)
+        a_retirer = chemin_fort_poids + a_retirer
+        #S'il y a plusieurs chemins qui ont la taille maximum
+        #on tire un chemin au hasard parmis ceux ayant le poids
+        #maximum et la plus grande taille.
+        if len(grands_chemins) > 1:
+            random.seed(9001)
+            choix = random.randint(0, len(grands_chemins))
+            print(choix)
+            choix_chemin = grands_chemins[choix]
+            #On récupère les chemins à conserver puis on ajoute
+            #les autres à la liste "a_retirer"
+            grands_chemins.remove(choix_chemin[0])
+            a_retirer = grands_chemins + a_retirer
+    #On enlève tous les chemins qui ont été ajoutés à la liste "a_retirer"
+    graph = remove_paths(graph, a_retirer, delete_entry_node, delete_sink_node)
+    return graph
+
+def find_bubbles(graph):
+    """Fonction qui va permettre de trouver les bulles au sein
+    de l'arbre. Elle retournera les origines et les fins de ces
+    bulles.
+    """
+    bulles = []
+    ensemble_noeuds = list(graph.nodes)
+    for i in range(len(ensemble_noeuds)):
+    #On recherche si un noeud a plusieurs successeurs.
+        if len(list(graph.successors(ensemble_noeuds[i]))) > 1:
+            debut = ensemble_noeuds[i]
+            #print("le noeud est:{}".format(ensemble_noeuds[i]))
+            j = 1
+            fin = ""
+            #Si oui, on recherche le prochain noeud qui a plusieurs
+            #prédécesseurs.
+            #Tant qu'il n'y a qu'un predecesseur et que j est plus petit
+            #que le nombre de noeuds "restants" on test si un noeud a plus
+            #d'un predecesseur; ce qui permettrait d'encadrer la bulle
+            fin_trouvee = False
+            while fin_trouvee == False and j < (len(ensemble_noeuds)-i):
+                if len(list(graph.predecessors(ensemble_noeuds[i+j]))) > 1:
+                    #print(j)
+                    fin = ensemble_noeuds[i+j]
+                    #print(fin)
+                    fin_trouvee = True
+                j += 1
+            #Si on a récupéré un noeud qui a des successeurs et un noeud
+            #qui a des prédécesseurs on récupère les coordonnées.
+            if fin != "":
+                bulles.append([debut, fin])
+    print(bulles)
+    #On retourne les coordonnées qui encadrent les bulles.
+    return bulles
 
 
-    
+
+def solve_bubble(graph, debut, fin):
+    """Fonction permettant de nettoyer le graph, 
+    en prenant un noeud ancêtre et un noeud descendant.
+    """
+    ensemble_chemins = []
+    for path in nx.all_simple_paths(graph,    source=debut, target=fin):
+        ensemble_chemins.append(path)
+    print(ensemble_chemins)
+    if len(ensemble_chemins) >= 2 and type(ensemble_chemins[1]) is list:
+        poids_moyen = []
+        ensemble_longueurs = []
+        for chemin in ensemble_chemins:
+            poids_moyen.append(path_average_weight(graph, chemin))
+            ensemble_longueurs.append(len(chemin))
+        print(poids_moyen)
+        graph = select_best_path(graph, ensemble_chemins,ensemble_longueurs, poids_moyen, delete_entry_node=False, delete_sink_node=False)
+    return graph
+
+def simplify_bubbles(graph):
+    """Fonction permettant de nettoyer le graph en détectant tous les chemins possible 
+    entre un noeud ancêtre et un noeud descendant.
+    """
+    liste_bulles = find_bubbles(graph)
+    for bulle in liste_bulles:
+        if bulle[0] in graph.nodes and bulle[1] in graph.nodes:
+            graph = solve_bubble(graph, bulle[0], bulle[1])
+
+    return graph
+
+
+
+def solve_entry_tips():
+    pass
+def solve_out_tips():
+    pass
     
 fichier_fastq = read_fastq("data\eva71_hundred_reads.fq.")
 taille_k=21
@@ -163,21 +293,14 @@ for read in liste_reads:
 occurrence_kmers = build_kmer_dict(fichier_fastq, taille_k)
 #print(occurrence_kmers)
 
-graph=build_graph(build_kmer_dict(read_fastq("data\eva71_two_reads.fq."), taille_kmer))
-nx.draw(graph)
+
 
 debuts = get_starting_nodes(graph)
 fins = get_sink_nodes(graph)
 liste_contigs = get_contigs(graph, debuts, fins)
-   
 
-    
-
-
-# In[ ]:
-
-
-
+graph = simplify_bubbles(graph)
+nx.draw(graph) 
 
 
 # In[ ]:
