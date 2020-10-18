@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[8]:
 
 
 import networkx as nx
@@ -27,7 +27,7 @@ def cut_kmer(seq, taille_k):
         yield seq[i:i+taille_k]
         
 if __name__=="__main__" :
-    for i in read_fastq("data\eva71_hundred_reads.fq."):
+    for i in read_fastq("data\eva71_plus_perfect.fq."):
         print(i)
         for j in cut_kmer(i,taille_k):
             print(j,end='')
@@ -60,7 +60,7 @@ def build_graph(dict_kmers):
     return graph
 
 #build_kmer_dict(read_fastq("data\eva71_two_reads.fq."), taille_kmer)
-graph=build_graph(build_kmer_dict(read_fastq("data\eva71_two_reads.fq."), taille_k))
+graph=build_graph(build_kmer_dict(read_fastq("data\eva71_plus_perfect.fq."), taille_k))
 
 def get_starting_nodes(graph):
     """Fonction permettant de définir les noeuds d'entrée."""
@@ -70,7 +70,7 @@ def get_starting_nodes(graph):
             noeuds_entree.append(noeud)
     return noeuds_entree
 
-#noeuds_entree = get_starting_nodes(graph)
+noeuds_entree = get_starting_nodes(graph)
                                    
 def get_sink_nodes(graph):
     """Fonction permettant de définir les noeuds de sortie."""
@@ -80,7 +80,7 @@ def get_sink_nodes(graph):
             noeuds_sortie.append(noeud)
     return noeuds_sortie
                                    
-#noeuds_sortie = get_sink_nodes(graph)
+noeuds_sortie = get_sink_nodes(graph)
                                    
 def get_contigs(graph, start, end):
     """Fonction permettant de générer une liste de tuples contenant les contigs avec leur taille.
@@ -111,7 +111,10 @@ def save_contigs(liste_contigs, nom_fichier):
             fichier_sortie.write("{0}\n".format(fill(contigs[0])))
             numero += 1
 
-    save_contigs(get_contigs(graph,noeuds_entree,noeuds_sortie),"Contigs.fna")
+    
+
+lg_fichier = "Contigs_" + str(len(get_contigs(graph,noeuds_entree,noeuds_sortie)))
+save_contigs(get_contigs(graph,noeuds_entree,noeuds_sortie), lg_fichier)
 
 def std(liste_valeurs):
     """Calcul l'écart-type de la liste de valeurs"""
@@ -276,7 +279,7 @@ def solve_entry_tips():
 def solve_out_tips():
     pass
     
-fichier_fastq = read_fastq("data\eva71_hundred_reads.fq.")
+fichier_fastq = read_fastq("data\eva71_plus_perfect.fq.")
 taille_k=21
    
 
