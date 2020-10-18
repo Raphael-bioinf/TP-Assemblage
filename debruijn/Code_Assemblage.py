@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[18]:
+# In[1]:
 
 
 import networkx as nx
@@ -27,7 +27,7 @@ def cut_kmer(seq, taille_k):
         yield seq[i:i+taille_k]
         
 if __name__=="__main__" :
-    for i in read_fastq("data\eva71_plus_perfect.fq."):
+    for i in read_fastq("..\data\eva71_plus_perfect.fq."):
         print(i)
         for j in cut_kmer(i,taille_k):
             print(j,end='')
@@ -326,8 +326,9 @@ def solve_out_tips(graph, sorties):
     graph = select_best_path(graph, ensemble_chemins,    ensemble_longueurs, poids_moyen, delete_entry_node=False,    delete_sink_node=True)
     return graph
 
-def main() :    
-    fichier_fastq = read_fastq("data\eva71_plus_perfect.fq.")
+def main() : 
+    
+    fichier_fastq = read_fastq("..\data\eva71_plus_perfect.fq.")
     taille_k=21
 
 
