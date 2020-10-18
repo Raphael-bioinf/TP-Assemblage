@@ -193,7 +193,7 @@ def path_average_weight(graph, chemin):
     poids = 0
     nbre_edges = 0
     edges = graph.subgraph(chemin).edges(data=True)
-    #On va récupérer les poids de chaque lien.
+    #On récupère les poids.
     for u_value, v_value, e_value in edges:
         poids += e_value['weight']
         nbre_edges += 1
@@ -233,18 +233,14 @@ def select_best_path(graph, ensemble_chemins, ensemble_longueurs,poids_moyen, de
     a_retirer = []
     taille_max = max(poids_moyen)
     chemin_fort_poids = []
-    #On recherche les chemins qui ont un poids correspondant
-    #au poids maximum (de préférence un seul ...)
+    #On recherche les chemins qui ont un poids maximum
     for i in range(len(ensemble_chemins)):
         if poids_moyen[i] == taille_max:
             chemin_fort_poids.append(ensemble_chemins[i])
-    #On récupère les chemins à conserver puis on ajoute
-    #les autres à la liste "a_retirer"
+    #On récupère les chemins à conserver et ceux  "a_retirer"
     for chemin in chemin_fort_poids:
         ensemble_chemins.remove(chemin)
     a_retirer = ensemble_chemins + a_retirer
-    #S'il y a plus qu'un chemin qui a le poids maximum on regarde
-    #la taille de ceux le poids maximum.
     if len(chemin_fort_poids) > 1:
         longueur_max = max(ensemble_longueurs)
         grands_chemins = []
@@ -264,11 +260,9 @@ def select_best_path(graph, ensemble_chemins, ensemble_longueurs,poids_moyen, de
             choix = random.randint(0, len(grands_chemins))
             print(choix)
             choix_chemin = grands_chemins[choix]
-            #On récupère les chemins à conserver puis on ajoute
-            #les autres à la liste "a_retirer"
             grands_chemins.remove(choix_chemin[0])
             a_retirer = grands_chemins + a_retirer
-    #On enlève tous les chemins qui ont été ajoutés à la liste "a_retirer"
+    #On enlève tous les chemins dans la liste "a_retirer" 
     graph = remove_paths(graph, a_retirer, delete_entry_node, delete_sink_node)
     return graph
 
@@ -280,31 +274,27 @@ def find_bubbles(graph):
     bulles = []
     ensemble_noeuds = list(graph.nodes)
     for i in range(len(ensemble_noeuds)):
-    #On recherche si un noeud a plusieurs successeurs.
+    #On vérifie si un noeud a plusieurs successeurs.
         if len(list(graph.successors(ensemble_noeuds[i]))) > 1:
             debut = ensemble_noeuds[i]
-            #print("le noeud est:{}".format(ensemble_noeuds[i]))
             j = 1
             fin = ""
             #Si oui, on recherche le prochain noeud qui a plusieurs
             #prédécesseurs.
-            #Tant qu'il n'y a qu'un predecesseur et que j est plus petit
-            #que le nombre de noeuds "restants" on test si un noeud a plus
-            #d'un predecesseur; ce qui permettrait d'encadrer la bulle
+            #Si il n'y a qu'un seul predecesseur et que j < nombre de noeuds
+            # on test si un noeud a plus d'un predecesseur.
             fin_trouvee = False
             while fin_trouvee == False and j < (len(ensemble_noeuds)-i):
                 if len(list(graph.predecessors(ensemble_noeuds[i+j]))) > 1:
-                    #print(j)
                     fin = ensemble_noeuds[i+j]
-                    #print(fin)
                     fin_trouvee = True
                 j += 1
-            #Si on a récupéré un noeud qui a des successeurs et un noeud
-            #qui a des prédécesseurs on récupère les coordonnées.
+            #Si on a  un noeud avec des successeurs et un noeud
+            #avec des prédécesseurs on récupère leurs coordonnées.
             if fin != "":
                 bulles.append([debut, fin])
     print(bulles)
-    #On retourne les coordonnées qui encadrent les bulles.
+    #On retourne les coordonnées.
     return bulles
 
 
@@ -344,7 +334,7 @@ def solve_entry_tips(graph, entrees):
     """Fonction qui permet d'enlever les entrées indésirables."""
     print(entrees)
     bornes_initiales = []
-    #On cherche les noeuds avec des intersections en partant du début
+    #On cherche les noeuds avec des intersections
     for noeuds_entree in entrees:
         ensemble_noeuds = list(graph.nodes)
         fin = ""
@@ -354,7 +344,6 @@ def solve_entry_tips(graph, entrees):
         if fin != "":
             bornes_initiales.append([noeuds_entree, fin])
     print(bornes_initiales)
-    #Définitions des chemins et valeurs associées
     ensemble_chemins = []
     poids_moyen = []
     ensemble_longueurs = []
@@ -363,13 +352,13 @@ def solve_entry_tips(graph, entrees):
             ensemble_chemins.append(path)
             poids_moyen.append(path_average_weight(graph, path))
             ensemble_longueurs.append(len(path))
-    #Nettoyage du graph
+    #On Nettoie le graph
     graph = select_best_path(graph, ensemble_chemins,    ensemble_longueurs, poids_moyen, delete_entry_node=True,    delete_sink_node=False)
     return graph
 
 def solve_out_tips(graph, sorties):
     """Fonction qui permet d'enlever les entrées indésirables"""
-    #établissement des bornes de chemins de sortie.
+    #Définition des bornes du chemins de sortie.
     bornes_initiales = []
     for noeuds_sortie in sorties:
         ensemble_noeuds = list(graph.nodes)
@@ -388,13 +377,14 @@ def solve_out_tips(graph, sorties):
             ensemble_chemins.append(path)
             poids_moyen.append(path_average_weight(graph, path))
             ensemble_longueurs.append(len(path))
-    #Nettoyage du graph
+    #On Nettoie le graph
     graph = select_best_path(graph, ensemble_chemins,    ensemble_longueurs, poids_moyen, delete_entry_node=False,    delete_sink_node=True)
     return graph
 
 def main() : 
     
     args = get_arguments()
+    
     
     #fichier_fastq = read_fastq("..\data\eva71_plus_perfect.fq.")
     #taille_k=21
@@ -436,9 +426,9 @@ def main() :
     graph = simplify_bubbles(graph)
 
     final_contig = get_contigs(graph, noeuds_entree, noeuds_terminaux)
-    print("\n\n\nOn obtient {} noeuds d'entrée.".format(len(noeuds_entree)))
-    print("On obtient {} noeuds de sortie.".format(len(noeuds_terminaux)))
-    print("Ce qui nous donne {} contigs généré(s).".format(len(final_contig))) 
+    print("\n\n\n {} noeuds d'entrée.".format(len(noeuds_entree)))
+    print("{} noeuds de sortie.".format(len(noeuds_terminaux)))
+    print("{} contigs généré(s).".format(len(final_contig))) 
 
     print(final_contig)
     nx.draw(graph)
